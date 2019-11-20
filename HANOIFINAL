@@ -1,0 +1,117 @@
+# Author: José Isaac Gallegos Velica & Jahaziel Nuño Contreras
+# Date:   03/10/2019 
+# Description: Tower of Hanoi
+# add, addi, sub, or, ori, and, andi, nor, srl, sll, lw, sw, beq, bne, j, jal y jr
+.data
+
+.text
+Main: 
+    	addi $s0, $zero, 3		# umber of disks
+    	addi $a0, $a0,0	# first tower	
+    	#addi $a0, $a0,0x10010000
+    	jal Init			# We jump to int function, this function helps us to give the addresses to the 3 towers a0, a1, a2
+    	add $t0, $zero, $s0		# We put de number of disks in a temp location 
+    	
+    	jal Enumerar			# Initialize the tower with the respective number of disks
+    	# Give each tower their location in stack
+	addi $t0, $a0, 0 		# First tower location	
+	addi $t1, $a1, 0		# aux tower location
+	addi $t2, $a2,  0		#final towe location
+	
+ #      addi $sp, $a2, 4		# Decrement sp by 4 sp in final tower
+    	addi $t3, $s0, 0		# Value of n is put in t3
+	jal Hanoi			# Jump to Hanoi
+	j Exit				#  End 
+	    	
+
+Init:
+    	beq $t0, 4,  InitExit		# Jump to InitExit after completing 4 iterations (multiply n by 4 to know the addresses to be reserved per tower)
+    	addi $t0, $t0, 1		# Increment the number of disks
+    	add $t1, $t1, $s0		# Number of iterations ( n + n)
+    	j Init
+    
+InitExit:
+ #   	add $a0, $a0, $t1		# Saves first tower address
+ 	add $a1, $a1, 16
+ 	#add $a1, $a1, 	0x10010020
+ #	add $a1, $a0, $t1		# Saves aux tower address
+ #   	add $a2, $a1, $t1		# Saves final tower address
+ 	add $a2, $a2, 32	
+ 	#add $a2, $a2, 0x10010040
+        #add $sp, $a0, 0			# Puts sp at the top of the first tower
+        jr $ra				# Jump back to main 	
+
+
+Enumerar:	
+	beq $t0, $zero, EnumExit	# After completing all the iterations, jumps to EnumExit
+	sw $t0, 0($a0)			# Stores the number of disk in the first tower
+	addi $t0, $t0, -1		# Decrements n
+	addi $a0, $a0, 4		# Increments sp by 4
+	j Enumerar			# Jumps back to Enumerar
+ 	
+EnumExit:
+ 	jr $ra				# Jump back to main after completing n iterations
+  
+Hanoi:
+	beq $t3, 1, CasoBase		# If n = 1 jumps to the base case
+	sw $t3, 0($sp)			# Stores the current n value in sp
+	sw $ra, -4($sp)			# Saves ra 
+	 
+	# hanoi, n-1, com, fin , aux before calling hanoi, we decrement n
+	# and we do a swap between the addresses of the aux and final tower
+
+	addi $t3, $t3, -1	# Decrements n
+	addi $t4, $t1, 0	# Temp location for aux address temp = aux
+	addi $t1, $t2, 0	# aux = final
+	addi $t2, $t4, 0 	# final = aux
+	addi $sp, $sp, -8	# Decrement sp by 8
+	jal Hanoi		# After swap jump to hanoi (recursive call)
+	
+	lw $t3, 0($sp)			# Stores the current n value in sp
+	lw $ra, -4($sp)			# Saves ra 
+	
+	#Swap between aux and final tower
+	addi $t4, $t1, 0	# temp = final
+	addi $t1, $t2, 0        # final = aux
+	addi $t2, $t4, 0 	# final = temp
+	 
+	# Disk at the top of the first tower is move to the final tower
+
+	addi $t0, $t0, -4 	# Top value of n in the first tower
+	sw $zero, 0($t0)	# Delete the number
+	sw $t3, 0($t2)		# We move the disk to the final tower
+	addi $t2, $t2, 4	# Increment sp of final tower
+	 
+	#hanoi n.1, aux, com, fin (before calling hanoi, we decrement n
+	# and we do a swap between the addresses of the aux and first tower
+ 	
+	addi $t3, $t3, -1	# n-1
+	addi $t4, $t1, 0	# temp = aux
+	addi $t1, $t0, 0	# aux  = first
+	addi $t0, $t4, 0	# first = temp
+	addi $sp, $sp, -8	# Decrement sp by 8
+	jal Hanoi		# Recursive call 
+	 
+	lw $t3, 0($sp)			# Current n value
+	lw $ra, -4($sp)			# Loads return address
+
+	#Swap: we undo the swap we did (first = first, aux = aux)
+	
+	addi $t4, $t1, 0	 # temp = first
+	addi $t1, $t0, 0	#  first = aux
+	addi $t0, $t4, 0	# aux = temp
+	 
+	addi $sp, $sp, 8		# Increment  sp
+	jr $ra				# Jump wherever ra is pointing
+		
+CasoBase: 
+	#if n = 1 the disk is moved from initial tower to final tower
+	addi $t0, $t0, -4 	# Last disk of the first tower
+	sw $zero, 0($t0)	# Delete value 
+	sw $t3, 0($t2)		# Put the disk in the final tower
+	addi $t2, $t2, 4	# Increment sp 
+	
+	addi $sp, $sp, 8		#Increments sp
+	jr $ra				#Jumps to the return address 
+	 
+Exit:	
